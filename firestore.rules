@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net - Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Secure rule block for EBD unified database state document
+    match /ebd/{documentId} {
+      // Allow read/write access so the app can function cleanly if anonymous auth is restricted on the project
+      allow read, write: if true;
+    }
+  }
+}

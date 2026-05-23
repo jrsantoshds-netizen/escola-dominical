@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "ebd_data": {
+      "title": "EBD Database State",
+      "description": "The unified state of the IEADTAM Escola Bíblica Dominical system, synchronized to Firestore.",
+      "type": "object",
+      "properties": {
+        "congregacoes": {
+          "type": "array",
+          "description": "List of active congregations."
+        },
+        "usuarios": {
+          "type": "array",
+          "description": "List of authenticated users."
+        },
+        "alunos": {
+          "type": "object",
+          "description": "Student data keyed by congregation ID."
+        },
+        "professores": {
+          "type": "object",
+          "description": "Teacher data keyed by congregation ID."
+        },
+        "licoes": {
+          "type": "object",
+          "description": "Lesson schedules keyed by congregation ID."
+        },
+        "turmas": {
+          "type": "object",
+          "description": "Class cohorts keyed by congregation ID."
+        },
+        "presencas": {
+          "type": "object",
+          "description": "Attendance rosters keyed by congregation ID."
+        },
+        "dizimos": {
+          "type": "object",
+          "description": "Tithes records keyed by congregation ID."
+        }
+      },
+      "required": [
+        "congregacoes",
+        "usuarios",
+        "alunos",
+        "professores",
+        "licoes",
+        "turmas",
+        "presencas",
+        "dizimos"
+      ]
+    }
+  },
+  "firestore": {
+    "ebd/{documentId}": {
+      "schema": "ebd_data",
+      "description": "Stores the EBD database synchronization state document."
+    }
+  }
+}
