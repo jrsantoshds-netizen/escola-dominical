@@ -39,7 +39,9 @@ import {
   Church,
   RefreshCw,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Clock,
+  Calendar
 } from 'lucide-react';
 
 interface Toast {
@@ -50,6 +52,25 @@ interface Toast {
 
 export default function App() {
   const [db, setDb] = useState<DatabaseState>(() => getDatabase());
+  const [currentDateTime, setCurrentDateTime] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+
+  const formatFullDate = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' };
+    const formatted = date.toLocaleDateString('pt-BR', options);
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  };
+
   const [loadingCloud, setLoadingCloud] = useState(true);
   const [cloudSynced, setCloudSynced] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -394,6 +415,35 @@ export default function App() {
     updateDBState(updated);
   };
 
+  const saveBatchPresencas = (pList: Presenca[], idsToDelete: string[] = []) => {
+    const updated = { ...db };
+    if (!updated.presencas[activeCongregationId]) {
+      updated.presencas[activeCongregationId] = [];
+    }
+
+    if (idsToDelete.length > 0) {
+      updated.presencas[activeCongregationId] = updated.presencas[activeCongregationId].filter(
+        (p) => !idsToDelete.includes(p.id)
+      );
+    }
+
+    pList.forEach((p) => {
+      const idx = updated.presencas[activeCongregationId].findIndex((item) => item.id === p.id);
+      if (idx !== -1) {
+        updated.presencas[activeCongregationId][idx] = p;
+      } else {
+        updated.presencas[activeCongregationId].push(p);
+      }
+    });
+
+    if (pList.length > 0) {
+      triggerToast(`Chamada da turma registrada: ${pList.length} alunos presentes.`, 'success');
+    } else if (idsToDelete.length > 0) {
+      triggerToast('Chamada atualizada de volta com exclusão de frequências.', 'info');
+    }
+    updateDBState(updated);
+  };
+
   const deletePresenca = (id: string) => {
     const updated = { ...db };
     if (updated.presencas[activeCongregationId]) {
@@ -602,6 +652,7 @@ export default function App() {
             alunos={getAlunos()}
             licoes={getLicoes()}
             onSave={savePresenca}
+            onSaveMultiple={saveBatchPresencas}
             onDelete={deletePresenca}
           />
         );
@@ -785,12 +836,17 @@ export default function App() {
       </div>
 
       {/* MOBILE DESKTOP MENU SEPARATOR HEADER */}
-      <header className="sticky top-0 z-30 px-5 py-3.5 flex items-center justify-between border-b border-slate-900 bg-slate-900 md:hidden print:hidden">
+      <header className="sticky top-0 z-30 px-5 py-3 flex items-center justify-between border-b border-slate-900 bg-slate-900 md:hidden print:hidden">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 shrink-0">
             <IeadtamLogo />
           </div>
-          <span className="font-bold text-white tracking-widest font-serif text-sm">IEADTAM EBD</span>
+          <div className="flex flex-col">
+            <span className="font-bold text-white tracking-wider font-serif text-sm">IEADTAM EBD</span>
+            <span className="text-[10px] text-amber-550 font-mono font-semibold flex items-center gap-1 select-none">
+              <Clock className="h-2.5 w-2.5 animate-pulse text-amber-500" /> {formatTime(currentDateTime)}
+            </span>
+          </div>
         </div>
         <button 
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -821,6 +877,20 @@ export default function App() {
           <div className="w-full flex items-center gap-2 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/10 py-1.5 px-3 select-none text-xs text-amber-500 font-bold">
             <Church className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{getCongName()}</span>
+          </div>
+
+          {/* Sytlish Clock & Calendar Widget */}
+          <div className="w-full flex flex-col gap-1.5 rounded-xl bg-slate-950 border border-slate-800 p-2.5 select-none shadow-inner">
+            <div className="flex items-center justify-between text-[10px] uppercase font-bold tracking-wider text-slate-400">
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3 text-amber-500 animate-pulse" /> Hora Certa
+              </span>
+              <span className="font-mono text-amber-500 text-xs font-bold leading-none tracking-tight">{formatTime(currentDateTime)}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+              <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <span className="truncate text-[11px] capitalize">{formatFullDate(currentDateTime)}</span>
+            </div>
           </div>
 
           {/* ADMIN CONGREGATION SWITCHER CONTROL */}
@@ -865,17 +935,6 @@ export default function App() {
           <div className="space-y-1">
             <div className="px-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-1">Cadastros</div>
             <div className="space-y-1">
-              <button
-                onClick={() => { setActiveTab('sedes'); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 py-2 px-3.5 rounded-xl text-xs font-semibold select-none cursor-pointer transition ${
-                  activeTab === 'sedes' 
-                    ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' 
-                    : 'text-slate-400 hover:text-slate-105 hover:bg-slate-850/50'
-                }`}
-              >
-                <Church className="h-4 w-4" />
-                <span>Cadastrar Sede</span>
-              </button>
               <button
                 onClick={() => { setActiveTab('alunos'); setMobileMenuOpen(false); }}
                 className={`w-full flex items-center gap-3 py-2 px-3.5 rounded-xl text-xs font-semibold select-none cursor-pointer transition ${
